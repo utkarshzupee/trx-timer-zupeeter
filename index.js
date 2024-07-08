@@ -43,6 +43,15 @@ const pool = mysql.createPool({
   multipleStatements: true,
   connectTimeout: 10000,
 });
+// const pool = mysql.createPool({
+//   connectionLimit: 10,
+//   host: "103.120.178.181",
+//   user: "zupeegame_DB",
+//   password: "6xIr7wjPMi@n",
+//   database: "zupeegame_DB",
+//   multipleStatements: true,
+//   connectTimeout: 10000,
+// });
 
 // Event listener for new connections
 pool.on("connection", function (_conn) {
@@ -422,10 +431,10 @@ if (x) {
   );
 
   setTimeout(() => {
-    generatedTimeEveryAfterEveryOneMinTRX();
-    generatedTimeEveryAfterEveryOneMin();
-    generatedTimeEveryAfterEveryThreeMin();
-    generatedTimeEveryAfterEveryFiveMin();
+    // generatedTimeEveryAfterEveryOneMinTRX();
+    // generatedTimeEveryAfterEveryOneMin();
+    // generatedTimeEveryAfterEveryThreeMin();
+    // generatedTimeEveryAfterEveryFiveMin();
     x = false;
   }, secondsUntilNextMinute * 1000);
 }
@@ -435,8 +444,8 @@ const finalRescheduleJob = schedule.scheduleJob(
   function () {
     twoMinTrxJob?.cancel();
     threeMinTrxJob?.cancel();
-    generatedTimeEveryAfterEveryThreeMinTRX();
-    generatedTimeEveryAfterEveryFiveMinTRX();
+    // generatedTimeEveryAfterEveryThreeMinTRX();
+    // generatedTimeEveryAfterEveryFiveMinTRX();
   }
 );
 
@@ -451,9 +460,9 @@ app.post("/bid-placed-node", async (req, res) => {
   // amount: bet amount
   // bet_number: bet-number ( 0-9 k liye 1-10 and 11--> green, 12-->voilet, 13-->red,14--> small, 15-->big)
   // description: Big/Small
-  //
+
   const { user_id, type, round_no, amount, bet_number, description } = req.body;
-  if(round_no && Number(round_no)<= 1){
+  if (round_no && Number(round_no) <= 1) {
     return res.status(200).json({
       msg: `Refresh your page may be your game history not updated.`,
     });
@@ -470,99 +479,154 @@ app.post("/bid-placed-node", async (req, res) => {
 
   pool.getConnection((err, connection) => {
     if (err) {
-      connection.release();
+      // connection.release();
       console.error("Error getting database connection: ", err);
       return res.status(500).json({
         msg: `Something went wrong ${err}`,
       });
     }
-    const query_for_wallet_checking = `SELECT or_m_user_wallet from m03_user_detail where or_m_reg_id = ${user_id}`;
-    connection.query(query_for_wallet_checking, (err, result) => {
+    // tr35_retopup 
+    const query_for_testing_already_exist = `SELECT tr_package FROM  tr35_retopup_temp where  tr_transid = ${round_no} AND tr_user_id = ${user_id} AND tr_type = ${type}`;
+    connection.query(query_for_testing_already_exist, (err, result) => {
       if (err) {
         connection.release();
         return res.status(500).json({
           msg: `Something went wrong ${err}`,
         });
       }
-      const wallet_amount = Number(result?.[0]?.or_m_user_wallet);
+      if (
+        [11, 12, 13]?.includes(Number(bet_number)) &&
+        result?.find((i) => [11, 12, 13]?.includes(i?.tr_package))
+      ) {
+        return res.status(200).json({
+          msg: `Already Placed on color`,
+        });
+      } else if (
+        [14, 15]?.includes(Number(bet_number)) &&
+        result?.find((i) => [14, 15]?.includes(i?.tr_package))
+      ) {
+        return res.status(200).json({
+          msg: `Already placed on big/small`,
+        });
+      } else if (
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]?.includes(Number(bet_number)) &&
+        result?.filter((i) =>
+          [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]?.includes(i?.tr_package)
+        )?.length > 2
+      ) {
+        return res.status(200).json({
+          msg: `You have already placed 3  bets.`,
+        });
+      } else {
+        // const query_for_wallet_checking = `SELECT or_m_user_wallet from m03_user_detail where or_m_reg_id = ${user_id}`;
+        // connection.query(query_for_wallet_checking, (err, result) => {
+        //   if (err) {
+        //     connection.release();
+        //     return res.status(500).json({
+        //       msg: `Something went wrong ${err}`,
+        //     });
+        //   }
+        //   const wallet_amount = Number(result?.[0]?.or_m_user_wallet);
 
-      const query_for_betting_amt = `SELECT m04_amt FROM m01_bet_amt WHERE m01_id=1`;
-      connection.query(query_for_betting_amt, (err, result) => {
-        if (err) {
-          connection.release();
-          return res.status(500).json({
-            msg: `Something went wrong ${err}`,
-          });
-        }
-        const max_amount = Number(result?.[0]?.m04_amt);
+        //   const query_for_betting_amt = `SELECT m04_amt FROM m01_bet_amt WHERE m01_id=1`;
+        //   connection.query(query_for_betting_amt, (err, result) => {
+        //     if (err) {
+        //       connection.release();
+        //       return res.status(500).json({
+        //         msg: `Something went wrong ${err}`,
+        //       });
+        //     }
+        //     const max_amount = Number(result?.[0]?.m04_amt);
 
-        if (amount < 1 || amount > max_amount) {
-          connection.release();
-          return res.status(200).json({
-            msg: `Your betting amount should be grater than equal 1 or less than equal ${max_amount}`,
-          });
-        }
+        //     if (amount < 1 || amount > max_amount) {
+        //       connection.release();
+        //       return res.status(200).json({
+        //         msg: `Your betting amount should be grater than equal 1 or less than equal ${max_amount}`,
+        //       });
+        //     }
 
-        if (wallet_amount && wallet_amount < amount) {
-          connection.release();
-          return res.status(200).json({
-            msg: `Your wallet amount is low. Amount: ${wallet_amount} Rs`,
-          });
-        }
+        //     if (wallet_amount && wallet_amount < amount) {
+        //       connection.release();
+        //       return res.status(200).json({
+        //         msg: `Your wallet amount is low. Amount: ${wallet_amount} Rs`,
+        //       });
+        //     }
 
-        const query =
-          "INSERT INTO tr35_retopup (tr_type,tr_package,tr_user_id,tr_pv,tr_topup_by,tr_transid,tr_final_amt,tr_descr) VALUES (?,?,?,?,?,?,?,?)";
+        //     const query =
+        //       "INSERT INTO tr35_retopup (tr_type,tr_package,tr_user_id,tr_pv,tr_topup_by,tr_transid,tr_final_amt,tr_descr) VALUES (?,?,?,?,?,?,?,?)";
+        //     connection.query(
+        //       query,
+        //       [
+        //         type,
+        //         bet_number,
+        //         user_id,
+        //         amount * 0.97,
+        //         user_id,
+        //         round_no,
+        //         amount,
+        //         description,
+        //       ],
+        //       (err, result) => {
+        //         if (err) {
+        //           connection.release();
+        //           console.log(err);
+        //           return res.status(500).json({
+        //             msg: `Something went wrong ${err}`,
+        //           });
+        //         }
+        //         const query =
+        //           "INSERT INTO tr07_manage_ledger (m_u_id,m_trans_id,m_dramount,m_description,m_ledger_type,m_bal_type,m_game_type,m_current_balance) VALUES (?,?,?,?,?,?,?,?)";
+        //         connection.query(
+        //           query,
+        //           [
+        //             user_id,
+        //             round_no,
+        //             amount,
+        //             "Bid Amount debited",
+        //             2,
+        //             1,
+        //             2,
+        //             wallet_amount - amount,
+        //           ],
+        //           (err, result) => {
+        //             if (err) {
+        //               connection.release();
+        //               console.log(err);
+        //               return res.status(500).json({
+        //                 msg: `Something went wrong ${err}`,
+        //               });
+        //             }
+        //             connection.release();
+        //             return res.status(200).json({
+        //               msg: "Bid placed Successfully",
+        //             });
+        //           }
+        //         );
+        //       }
+        //     );
+        //   });
+        // });
+
+        const procedureCall =
+          "CALL trx_bet_placing_node(?, ?, ?, ?, ?, ?, @result_msg); SELECT @result_msg;";
         connection.query(
-          query,
-          [
-            type,
-            bet_number,
-            user_id,
-            amount * 0.97,
-            user_id,
-            round_no,
-            amount,
-            description,
-          ],
-          (err, result) => {
+          procedureCall,
+          [user_id, type, round_no, amount, bet_number, description],
+          (err, results) => {
+            connection.release();
             if (err) {
-              connection.release();
-              console.log(err);
+              console.error("Error executing stored procedure: ", err);
               return res.status(500).json({
                 msg: `Something went wrong ${err}`,
               });
             }
-            const query =
-              "INSERT INTO tr07_manage_ledger (m_u_id,m_trans_id,m_dramount,m_description,m_ledger_type,m_bal_type,m_game_type,m_current_balance) VALUES (?,?,?,?,?,?,?,?)";
-            connection.query(
-              query,
-              [
-                user_id,
-                round_no,
-                amount,
-                "Bid Amount debited",
-                2,
-                1,
-                2,
-                wallet_amount - amount,
-              ],
-              (err, result) => {
-                if (err) {
-                  connection.release();
-                  console.log(err);
-                  return res.status(500).json({
-                    msg: `Something went wrong ${err}`,
-                  });
-                }
-                connection.release();
-                return res.status(200).json({
-                  msg: "Bid placed Successfully",
-                });
-              }
-            );
+            const resultMsg = results[1][0]["@result_msg"];
+            return res.status(200).json({
+              msg: resultMsg,
+            });
           }
         );
-      });
+      }
     });
   });
 });
@@ -575,7 +639,6 @@ app.post("/trx_result-node", async (req, res) => {
     });
   pool.getConnection((err, connection) => {
     if (err) {
-      connection.release();
       console.error("Error getting database connection: ", err);
       return res.status(500).json({
         msg: `Something went wrong ${err}`,
